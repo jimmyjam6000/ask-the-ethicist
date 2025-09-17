@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NYT Ethicist MadLibs — Generator</title>
+  <style>
+    :root{
+      --bg:#081028;
+      --panel:#0f1728;
+      --ink:#f4f7fb;
+      --muted:#bfc6d6;
+      --accent:#2ea3ff;
+      --line: rgba(255,255,255,.06);
+      --ring: rgba(46,163,255,.28);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color:var(--ink);
+      background:
+        radial-gradient(900px 450px at 10% -10%, #0b1a3a 0, rgba(11,26,58,0) 60%),
+        linear-gradient(180deg, #071223 0%, var(--bg) 100%);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      hyphens:none;
+    }
+    .wrap-max{max-width:1000px;margin:0 auto;padding:28px}
+    header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+    .logo{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#7fd1ff,var(--accent));box-shadow:0 8px 20px rgba(46,163,255,.15); color:#012;}
+    h1{margin:0;font-size:24px}
+    .sub{color:var(--muted);font-size:13px}
+    .main-grid{display:grid;grid-template-columns:1.1fr .85fr;gap:20px}
+    @media (max-width:900px){ .main-grid{grid-template-columns:1fr} }
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.01), transparent 30%), var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 8px 28px rgba(0,0,0,.38)}
+    .title{font-weight:700;margin:0 0 10px 0}
+    .script{font-size:17px;border-radius:12px;padding:12px;background:#081022;border:1px solid var(--line); white-space:pre-wrap; word-break:keep-all; hyphens:none; color:var(--ink)}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button, select{border-radius:10px;padding:10px 12px;border:1px solid var(--line); background:#07142a;color:var(--ink); cursor:pointer}
+    button{font-weight:700;background:linear-gradient(180deg,var(--accent),#1a8fe0); border:none}
+    .muted{color:var(--muted)}
+    .grid-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    @media (max-width:700px){ .grid-fields{grid-template-columns:1fr} }
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em}
+    select{width:100%}
+    .choices{columns:3; column-gap:24px; color:var(--muted); font-size:14px; margin-top:8px}
+    @media (max-width:900px){ .choices{columns:2} }
+    @media (max-width:640px){ .choices{columns:1} }
+    .choices h3{font-size:13px;color:var(--ink);margin:8px 0}
+    .pill{padding:4px 8px;border-radius:999px;background:#061126;border:1px solid var(--line);font-size:12px;color:var(--muted)}
+    .hr{height:1px;background:var(--line);margin:12px 0}
+    @media print{
+      body{background:white;color:black}
+      .card{background:white;border:1px solid #ddd;box-shadow:none}
+      button,.pill{display:none}
+      .choices{columns:2}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap-max">
+    <header>
+      <div class="logo">✉️</div>
+      <div>
+        <h1>NYT Ethicist MadLibs</h1>
+        <div class="sub">Fill the fields or roll for a new letter to the Ethicist.</div>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <section class="card">
+        <p class="title">Letter Template</p>
+        <div id="script" class="script">
+          <span class="muted">Choose fields on the right or hit “Roll All”.</span>
+        </div>
+
+        <div class="controls">
+          <button id="roll">🎲 Roll All</button>
+          <button id="copy">📋 Copy</button>
+          <button id="five">🎲 Generate 5</button>
+          <button id="print">🖨️ Print</button>
+          <span id="copied" class="pill" style="display:none">Copied!</span>
+        </div>
+      </section>
+
+      <aside class="card">
+        <p class="title">Fields</p>
+        <div class="grid-fields" id="fields"></div>
+      </aside>
+    </div>
+
+    <section class="card" style="margin-top:18px">
+      <p class="title">Fields & Choices (pen-and-paper)</p>
+      <div class="hr"></div>
+      <div id="choices" class="choices"></div>
+    </section>
+  </div>
+
+  <script>
+    const data = {
+      "Problematic person": ["nanny","valet","driver","grandmother","stepchild","maid","co-worker","dog"],
+      "Sin": ["putting on airs","smoking","drinking heavily","refusing to transport large quantities of alcohol","telling fibs","peeing on the rug","asking me for money","reading magazines without paying for them","bragging about her illegal hobbies"],
+      "Method of retaliation": ["fire her","disinherit her","snitch","report her","have her arrested","cut her off","cut her out of my life","send her to a kennel","send her to a home","have her committed","turn off her life support"],
+      "Unwanted consequence": ["make me look racist","be expensive","ruin Easter","hurt her feelings","damage our friendship","be exhausting"],
+      "Author": ["Concerned","Name withheld","Nervous in Nutley","Peter Heyneman"]
+    };
+    const fieldOrder = ["Problematic person","Sin","Method of retaliation","Unwanted consequence","Author"];
+    const fieldsEl = document.getElementById('fields');
+    const scriptEl = document.getElementById('script');
+    const choicesEl = document.getElementById('choices');
+    const copiedPill = document.getElementById('copied');
+    const state = {};
+    function createField(name, options){
+      const wrap = document.createElement('div');
+      const label = document.createElement('label');
+      label.textContent = name;
+      const sel = document.createElement('select');
+      sel.innerHTML = '<option value="">— choose —</option>' + options.map(o => `<option>${o}</option>`).join('');
+      sel.addEventListener('change', ()=> { state[name] = sel.value; render(); });
+      wrap.appendChild(label);
+      wrap.appendChild(sel);
+      fieldsEl.appendChild(wrap);
+    }
+    fieldOrder.forEach(k => createField(k, data[k]));
+    function render(){
+      const s = (k) => state[k] || `[${k}]`;
+      const txt = `Dear Ethicist,\n\nMy ${s("Problematic person")} has recently started ${s("Sin")}. I want to ${s("Method of retaliation")} but I'm worried that it will ${s("Unwanted consequence")}. Help!\n\nSincerely,\n${s("Author")}.`;
+      scriptEl.textContent = txt;
+    }
+    render();
+    const rand = (arr) => arr[Math.floor(Math.random()*arr.length)];
+    function rollAll(){
+      fieldOrder.forEach(k => state[k] = rand(data[k]));
+      [...fieldsEl.querySelectorAll('select')].forEach((sel,i)=>{ sel.value = state[fieldOrder[i]]; });
+      render();
+    }
+    document.getElementById('roll').addEventListener('click', rollAll);
+    document.getElementById('copy').addEventListener('click', async ()=>{
+      try {
+        await navigator.clipboard.writeText(scriptEl.textContent);
+        copiedPill.style.display = 'inline-block';
+        setTimeout(()=> copiedPill.style.display = 'none', 1200);
+      } catch(e){
+        alert("Copy failed — select and copy manually.");
+      }
+    });
+    document.getElementById('five').addEventListener('click', ()=>{
+      let out = '';
+      for(let i=0;i<5;i++){
+        const f = fieldOrder.reduce((acc,k)=> (acc[k]=rand(data[k]), acc), {});
+        out += `— Dear Ethicist —\n\nMy ${f["Problematic person"]} has recently started ${f["Sin"]}. I want to ${f["Method of retaliation"]} but I'm worried that it will ${f["Unwanted consequence"]}. Help!\n\nSincerely,\n${f["Author"]}.\n\n`;
+      }
+      alert(out.trim().slice(0, 1500) + (out.length>1500 ? "\n\n(Truncated)" : ""));
+    });
+    document.getElementById('print').addEventListener('click', ()=> window.print());
+    function buildChoices(){
+      choicesEl.innerHTML = fieldOrder.map(k => {
+        const list = data[k].map(x => `• ${x}`).join('<br>');
+        return `<div><h3>${k}</h3><div>${list}</div></div>`;
+      }).join('');
+    }
+    buildChoices();
+  </script>
+</body>
+</html>
